@@ -117,4 +117,45 @@ equals 메소드를 재정의할때 동치관계를 구현하며, 다음을 만�
     ```
     각각 true, true false가 나온다. p1, p3를 각각 p2랑 비교했을때 color를 무시하고 비교했지만 p1과 p3를 비교할땐 color를 무시할 수 없으니 추이성에 위배되는 코드이다.
 
+    확장된 클래스에서 추가된 필드를 포함하며 equals를 구현하는 방법은 없지만 괜찮은 우회법이 하나 있다.
+
+    Point를 상속하는 대신 Point객체를 필드로 만든 뒤 Point 뷰 메소드를 만드는 것이다.
     
+    ```java
+    public class ColorPoint {
+        private final Point point;
+        private final Color color;
+
+        public ColorPoint(int x, int y, Color color) {
+            point = new Point(x, y);
+            this.color = Objects.requireNonNull(color);
+        }
+
+        public Point asPoint() {
+            return point;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if(o == this) {
+                return true;
+            }
+
+            if(!(o instanceof ColorPoint)) {
+                return false;
+            }
+
+            ColorPoint cp = (ColorPoint) o;
+            return cp.point.equals(point) && cp.color.equals(color);
+        }
+    }
+    ```
+
+    정리
+
+    꼭 필요한 경우가 아니라면 equals를 재정의 하지 말자. 그럼에도 equals 메소드를 재정의 해야된다면 다음 단계를 따라 재정의하자.
+
+    1. == 연산자를 이용해 입력이 자기 자신의 참조인지 확인한다.
+    2. instanceof 연산자를 이용해 입력이 올바른 타입인지 확인한다.
+    3. 입력값을 올바른 타입으로 형 변환한다.
+    4. 입력객체와 자기 자신이 갖고있는 핵심 필드들이 '모두' 일치하는지 확인한다.
