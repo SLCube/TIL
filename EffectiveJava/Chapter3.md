@@ -160,6 +160,7 @@ equals 메소드를 재정의할때 동치관계를 구현하며, 다음을 만�
     3. 입력값을 올바른 타입으로 형 변환한다.
     4. 입력객체와 자기 자신이 갖고있는 핵심 필드들이 '모두' 일치하는지 확인한다.
 
+---
 ## item11 : equals를 재정의 하려거든 hashCode도 재정의하라.
 다음과같이 equals를 재정의한 Class있다 치자.
 ```java
@@ -238,3 +239,23 @@ public int hashCode() {
 
 생각) equals와 hashCode 재정의는 아직 초보인 내가 봤을 때 실수할 가능성이 많아보인다. 책에서는 Google의 AutoValue라이브러리가 이를 대신해준다고 소개해줬고 찾아보니 Lombok도 비슷한 기능이 있는것같다. 나중에 둘을 비교하면서 공부해봐야겠다.
 
+---
+## item12 toString은 항상 재정의해라.
+item11의 PhoneNumber를 활용하겠다.
+
+```java
+PhoneNumber pn = new PhoneNumber(123, 456, 7890);
+System.out.println(pn.toString());
+```
+
+toString을 재정의하지않으면 'ClassName@16진수HashCode' 형태의 값을 출력한다.
+저 자체가 의미있고 유용하다 생각 할 수 있지만, 위의 경우엔 '123-456-7890'이라 표기하는게 더 의미있을 것이다.
+
+```java
+    @Override
+    public String toString() {
+        return String.format("%03d-%03d-%04d", areaCode, prefix, lineNum);
+    }
+```
+
+위처럼 toString을 재정의하면 '123-456-7890'이라 출력된다.
