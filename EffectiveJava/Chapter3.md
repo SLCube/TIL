@@ -159,3 +159,82 @@ equals 메소드를 재정의할때 동치관계를 구현하며, 다음을 만�
     2. instanceof 연산자를 이용해 입력이 올바른 타입인지 확인한다.
     3. 입력값을 올바른 타입으로 형 변환한다.
     4. 입력객체와 자기 자신이 갖고있는 핵심 필드들이 '모두' 일치하는지 확인한다.
+
+## item11 : equals를 재정의 하려거든 hashCode도 재정의하라.
+다음과같이 equals를 재정의한 Class있다 치자.
+```java
+public class PhoneNumber {
+    private final short areaCode, prefix, lineNum;
+
+    public PhoneNumber(int areaCode, int prefix, int lineNum) {
+        this.areaCode = rangeCheck(areaCode, 999, "지역코드");
+        this.prefix = rangeCheck(prefix, 999, "프리픽스");
+        this.lineNum = rangeCheck(lineNum, 9999, "가입자번호");
+    }
+
+    private static short rangeCheck(int val, int max, String arg) {
+        if (val < 0 || val > max) {
+            throw new IllegalArgumentException(arg + ": " + val);
+        }
+        return (short) val;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof PhoneNumber)) {
+            return false;
+        }
+
+        PhoneNumber pn = (PhoneNumber) o;
+        return areaCode == pn.areaCode && prefix == pn.prefix && lineNum == pn.lineNum;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Short.hashCode(areaCode);
+        result = 31 * result + Short.hashCode(prefix);
+        result = 31 * result + Short.hashCode(lineNum);
+        return result;
+    }
+}
+```
+
+해당 클래스의 인스턴스를 HashMap의 원소로 사용해보자
+```java
+Map<PhoneNumber, String> m = new HashMap<>();
+m.put(new PhoneNumber(707, 867, 5309), "제니");
+```
+그 다음에 m.get(new PhoneNumber(707, 867, 5309))를 실행하면 결과가 어떻게 나올까? 곰곰히 생각해보자.
+
+
+<br>
+내가 이 내용을 다른데에서 봤다면 "제니"가 나올거라 예상했을거다. 코드에대해 설명하자면 우리는 equals를 두 객체가 물리적으로 같진 않더라도 논리적으로 동치이면 true를 반환하게 재정의했다. 하지만 물리적으론 다른 객체이기 때문에 두 객체의 hash값은 다를거고 위 코드의 결과는 null이 나올거다.
+
+equals 메소드가 두 객체를 물리적인 비교를 하든 논리적인 비교를 하든 두 객체가 같다면 hash값도 같아야된다.
+
+다음은 hashCode구현의 가장 안좋은 예이다.
+```java
+@Override
+public int hashCode(){
+    return 42;      // 사실 딱봐도 이렇게하면 안되겠다라는 생각이 든다.
+}
+```
+
+다음은 hashCode구현의 좋은 예이다.
+```java
+@Override
+public int hashCode() {
+    int result = Short.hashCode(areaCode);
+    result = 31 * result + Short.hashCode(prefix);
+    result = 31 * result + Short.hashCode(lineNum);
+}
+```
+
+간단하게 말하자면 equals를 재정의할때 사용한 핵심 원소들의 hashCode값을 이용해 hashCode를 재정의하고있다.
+
+생각) equals와 hashCode 재정의는 아직 초보인 내가 봤을 때 실수할 가능성이 많아보인다. 책에서는 Google의 AutoValue라이브러리가 이를 대신해준다고 소개해줬고 찾아보니 Lombok도 비슷한 기능이 있는것같다. 나중에 둘을 비교하면서 공부해봐야겠다.
+
