@@ -259,3 +259,9 @@ toString을 재정의하지않으면 'ClassName@16진수HashCode' 형태의 값�
 ```
 
 위처럼 toString을 재정의하면 '123-456-7890'이라 출력된다.
+
+---
+## item13 clone 재정의는 주의해서 진행하라.
+
+---
+## item14 Comparable을 구현할지 고려하라.
