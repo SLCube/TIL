@@ -90,6 +90,120 @@ p.changeName("홍철수");
 ---
 ## item17 변경 가능성을 최소화하라
 
+불변클래스 : 인스턴스 내부 값을 수정할 수 없는 클래스이다.
+
+클래스를 불변으로 만들기 위한 다섯가지 원칙이다.
+- Setter를 제공하지 않는다.
+- 클래스를 확장할 수 없도록 만든다.
+    - 해당 클래스를 final로 선언한다.
+    - 모든 생성자를 private 혹은 default로 만들고 static 팩토리 메소드를 제공한다.
+- 모든 필드를 final로 선언한다.
+- 모든 필드를 private으로 선언한다.
+- 자신 외에는 내부의 가변 컴포넌트에 접근할 수 없도록 만든다.
+    - 클래스에서 가변 객체를 참조하는 필드가 하나라도 있으면 클라이언트에서 그 객체 참조를 얻을 수 없도록 해야된다.
+
+
+```java
+// 클래스를 확장할 수 없도록 final 클래스로 선언했다.
+public final class Complex {
+
+    // 모든 필드를 private과 final로 선언했다.
+    private final double re;
+    private final double im;
+
+    public Complex(double re, double im) {
+        this.re = re;
+        this.im = im;
+    }
+
+    // getter 성격을 갖는 realPart, imaginaryPart 메소드는 제공하지만 변경자 메소드는 제공하지 않는다.
+    public double realPart() {
+        return re;
+    }
+
+    public double imaginaryPart() {
+        return im;
+    }
+
+    // 사칙연산 메소드들이 자기 자신을 변경하지 않고 새로운 Complex 인스턴스를 반환하고 있다. 각각의 인스턴스는 여전히 변하지 않았다.
+    public Complex plus(Complex c) {
+        return new Complex(re + c.re, im + c.im);
+    }
+
+    public Complex minus(Complex c) {
+        return new Complex(re - c.re, im - c.im);
+    }
+
+    public Complex times(Complex c) {
+        return new Complex(re * c.re - im * c.im, re * c.im + im * c.re);
+    }
+
+    public Complex dividedBy(Complex c) {
+        double tmp = c.re * c.re + c.im * c.im;
+        return new Complex((re * c.re + im * c.im) / tmp, (im * c.re - re * c.im) / tmp);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Complex)) {
+            return false;
+        }
+
+        Complex c = (Complex) o;
+
+        return Double.compare(c.re, re) == 0 && Double.compare(c.im, im) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * Double.hashCode(re) + Double.hashCode(im);
+    }
+
+    @Override
+    public String toString() {
+        return "(" + re + " + " + im + "i";
+    }
+}
+```
+
+불변 객체의 장점
+- 불변 객체는 단순하다.
+    - 생성시점의 상태를 파괴시점까지 유지할 수 있으니 개발자는 특별한 노력없이 객체의 상태를 믿고 사용할 수 있다.
+- 불변 객체는 기본적으로 스레드 안전하여 따로 동기화 할 필요가 없다.
+- 불변객체는 상태가 변하지 않으니 안심하고 공유할 수 있다. 위의 예시에선 자주 사용하는 값들을 상수화 해서 재활용 할 수 있다.
+
+불변 객체의 단점
+- 객체의 값이 다르면 무조건 독립된 다른 객체를 만들어야 된다.
+
+위 코드에선 class를 final로 선언해 상속을 막는 코드이고, 두번째 방법인 모든 생성자를 private(혹은 default)로 만들고 static factory method를 만들어 제공하는 방법을 적겠다.
+
+```java
+public class Complex {
+    private final double re;
+    private final double im;
+
+    private Complex(double re, double im) {
+        this.re = re;
+        this.im = im;
+    }
+
+    public static Complex valueOf(double re, double im) {
+        return new Complex(re, im);
+    }
+
+    ... 이하 생략
+}
+```
+
+정리
+- 클래스는 필요한 경우가 아니라면 무조건 불변이어야 한다. getter를 만들었다해서 습관적으로 setter를 만들지 말자.
+- 불변으로 만들 수 없는 클래스는 변경을 최소화 하자.
+- 다른 합당한 이유가 없다면 모든 필드는 private final로 선언하자.
+- 생성자는 불변식 설정이 모두 완료된, 초기화가 완벽히 끝난 상태의 객체를 생성해야 한다. 확실한 이유가 없다면 생성자와 static factory method를 제외한 초기화 메소드는 public으로 제공하면 안된다.
 ---
 ## item18 상속보다는 컴포지션을 사용하라
 
