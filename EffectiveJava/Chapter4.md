@@ -206,6 +206,374 @@ public class Complex {
 - 생성자는 불변식 설정이 모두 완료된, 초기화가 완벽히 끝난 상태의 객체를 생성해야 한다. 확실한 이유가 없다면 생성자와 static factory method를 제외한 초기화 메소드는 public으로 제공하면 안된다.
 ---
 ## item18 상속보다는 컴포지션을 사용하라
+일단 필자는 item18을 두번째 읽고있다. 첫번째 읽었을때 이해한 사실은 상속은 또 다른 의존성을 만든다. 이거 하나였다. 이 사실밖에 이해 못했다는 사실에 답답해서 짧은 시간에 두번 읽게 됐다.
+
+상위클래스와 하위클래스 모두 같은 프로그래머가 통제하는 패키지안에서 관리되면 상속도 안전한 방법이다. 하지만 구체클래스를 패키지 경계를 넘어 상속하는건 위험하다. (여기서 구현은 인터페이스를 구현하거나 인터페이스가 다른 인터페이스를 확장하는 것이 아닌 클래스가 다른 클래스를 확장하는걸 말한다.)
+
+상속은 캡슐화를 깨뜨린다.
+
+```java
+// 잘못된 예
+// 생성이후 요소가 몇개 추가됐는지 알려주는 기능을 제공함.
+public class InstrumentedHashSet<E> extends HashSet<E> {
+    private int addCount = 0;
+    
+    public InstrumentedHashSet() {
+
+    }
+
+    public InstrumentedHashSet(int initCap, float loadFactor) {
+        super(initCcap, loadFactor);
+    }
+
+    @Override
+    public boolean add(E e) {
+        addCount++;
+        super.add(e);
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends E> c) {
+        addCount += c.size();
+        super.addAll(c);
+    }
+
+    public int getAddCount() {
+        return addCount;
+    }
+}
+```
+```java
+InstrumentedHashSet<String> s = new InstrumentedHashSet<>();
+s.addAll(List.of("s", "ss", "sss"));
+System.out.println(s.getAddCount());    // 3을 기대하고 있다.
+```
+
+우리는 getAddCount 메소드가 3을 반환해줄거라 기대하겠지만, 실제로는 6을 반환한다. 왜 그럴까? 원인은 addAll함수가 add함수를 이용해 구현되있기 때문이다.
+HashSet의 addAll은 각 원소들을 대상으로 add메소드를 호출해 추가하는데(이런 사실은 공식문서에는 작성이 안되있다.) 여기서 add메소드는 우리가 InstrumentedHashSet에서 재정의한 add메소드이다. 
+
+중요한점은 이러한 문제가 개발자가 컨트롤할 수 없으면서 확장을 고려하지 않고 설계된 클래스를 상속받으면서 생긴 문제라는 것이다.
+
+컴포지션은 이러한 문제를 해결하기 위한 방법이다.
+
+```java
+public class ForwardingSet<E> implements Set<E> {
+    private final Set<E> s;
+
+    // 외부에서 주입받은 set을 이용함.
+    // 어떤 set이 들어올진 모르겠지만 구체적인 Set이 들어옴
+    // Set의 구현체이지만 구체적인 로직을 구현하지 않고 주입받은 구체적인 Set구현체의 로직을 따름
+    public ForwardingSet(Set<E> s) {
+        this.s = s;
+    }
+
+    public void clear() {
+        s.clear();
+    }
+
+    public boolean contains(Object o) {
+        return s.contains(o);
+    }
+
+    public boolean isEmpty() {
+        return s.isEmpty();
+    }
+
+    public int size() {
+        return s.size();
+    }
+
+    public Iterator<E> iterator() {
+        return s.iterator();
+    }
+
+    public boolean add(E e) {
+        return s.add(e);
+    }
+
+    public boolean remove(Object o) {
+        return s.remove(o);
+    }
+
+    public boolean containsAll(Collection<?> c) {
+        return s.containsAll(c);
+    }
+
+    public boolean addAll(Collection<? extends E> c) {
+        return s.addAll(c);
+    }
+
+    public boolean removeAll(Collection<?> c) {
+        return s.removeAll(c);
+    }
+
+    public boolean retainAll(Collection<?> c) {
+        return s.retainAll(c);
+    }
+
+    public Object[] toArray() {
+        return s.toArray();
+    }
+
+    public <T> T[] toArray(T[] a) {
+        return s.toArray(a);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return s.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return s.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return s.toString();
+    }
+}
+```
+
+```java
+public class InstrumentedSet<E> extends ForwardingSet<E> {
+
+    private int addCount = 0;
+
+    public InstrumentedSet(Set<E> s) {
+        super(s);
+    }
+
+    @Override
+    public boolean add(E e) {
+        addCount++;
+        return super.add(e);
+    }
+
+    @Override
+    public boolean addAll(Collection<? extends E> c) {
+        addCount += c.size();
+        return super.addAll(c);
+    }
+
+    public int getAddCount() {
+        return addCount;
+    }
+}
+```
+책을 읽다가 ForwardingSet의 역할에대한 의문이 생겼다.
+ForwardingSet을 거치지않고 Set 인터페이스를 바로 구현하는형태로 InstrumentedSet을 구현해도 똑같이 동작한다. 그렇다면 ForwardingSet의 존재이유는 뭘까...?
+
+다음은 Set 인터페이스를 바로 구현한 InstrumentedSet 클래스이다.
+
+```java
+public class InstrumentedSet<E> implements Set<E> {
+    private final Set<E> s;
+    private int addCount = 0;
+
+    public ExampleSet(Set<E> s) {
+        this.s = s;
+    }
+
+    public void clear() {
+        s.clear();
+    }
+
+    public boolean contains(Object o) {
+        return s.contains(o);
+    }
+
+    public boolean isEmpty() {
+        return s.isEmpty();
+    }
+
+    public int size() {
+        return s.size();
+    }
+
+    public Iterator<E> iterator() {
+        return s.iterator();
+    }
+
+    public boolean add(E e) {
+        addCount++;
+        return s.add(e);
+    }
+
+    public boolean remove(Object o) {
+        return s.remove(o);
+    }
+
+    public boolean containsAll(Collection<?> c) {
+        return s.containsAll(c);
+    }
+
+    public boolean addAll(Collection<? extends E> c) {
+        addCount += c.size();
+        return s.addAll(c);
+    }
+
+    public boolean removeAll(Collection<?> c) {
+        return s.removeAll(c);
+    }
+
+    public boolean retainAll(Collection<?> c) {
+        return s.retainAll(c);
+    }
+
+    public Object[] toArray() {
+        return s.toArray();
+    }
+
+    public <T> T[] toArray(T[] a) {
+        return s.toArray(a);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return s.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return s.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return s.toString();
+    }
+
+    public int getAddCount() {
+        return addCount;
+    }
+}
+```
+외부에서 구체적인 Set구현체를 주입받아 구체적인 구현과는 멀어지고 원하는 정책을 추가하는 모습까지 똑같다. 단지 ForwardingSet이라는 전달 클래스가 없을뿐이다.
+
+여기서 다른 클래스를 하나 추가할건데 이번엔 addCount가 아닌 deleteCount, 즉 생성이후 삭제된 원소의 갯수를 기록하는 정책을 갖는 클래스를 만들어 볼거다.
+
+```java
+public class MyDeleteSet<E> implements Set<E> {
+
+    private final Set<E> s;
+    private int deleteCount = 0;
+
+    public MyDeleteSet(Set<E> s) {
+        this.s = s;
+    }
+
+    public void clear() {
+        s.clear();
+    }
+
+    public boolean contains(Object o) {
+        return s.contains(o);
+    }
+
+    public boolean isEmpty() {
+        return s.isEmpty();
+    }
+
+    public int size() {
+        return s.size();
+    }
+
+    public Iterator<E> iterator() {
+        return s.iterator();
+    }
+
+    public boolean add(E e) {
+        deleteCount++;
+        return s.add(e);
+    }
+
+    public boolean remove(Object o) {
+        deleteCount++;
+        return s.remove(o);
+    }
+
+    public boolean containsAll(Collection<?> c) {
+        return s.containsAll(c);
+    }
+
+    public boolean addAll(Collection<? extends E> c) {
+        deleteCount += c.size();
+        return s.addAll(c);
+    }
+
+    public boolean removeAll(Collection<?> c) {
+        deleteCount += c.size();
+        return s.removeAll(c);
+    }
+
+    public boolean retainAll(Collection<?> c) {
+        return s.retainAll(c);
+    }
+
+    public Object[] toArray() {
+        return s.toArray();
+    }
+
+    public <T> T[] toArray(T[] a) {
+        return s.toArray(a);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        return s.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return s.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return s.toString();
+    }
+
+    public int getDeleteCount() {
+        return deleteCount;
+    }
+}
+```
+Set 인터페이스를 직접 구현하면 Set인터페이스에 정의된 모든 메소드들을 구현해야된다. 또 다른정책을 갖는 다른 클래스를 만들게 된다면 이러한 반복적인 작업을 또 해야될것이다.
+
+Set 인터페이스에서 정의된 메소드들을 공통으로 구현하되 구체적인 구현체는 외부에서 주입받는 형식으로 전달클래스를 만든뒤 전달클래스를 상속받고 필요한 정책만 재정의하면 코드의 중복을 없앨수 있을것이다.
+
+```java
+public class MySet<E> extends ForwardingSet<E> {
+
+    private int deleteCount = 0;
+
+    public MySet(Set<E> s) {
+        super(s);
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        deleteCount++;
+        return super.remove(o);
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        deleteCount += c.size();
+        return super.removeAll(c);
+    }
+
+    public int getDeleteCount() {
+        return deleteCount;
+    }
+}
+```
+
+위 예시처럼 컴포지션 방식으로 한번 구현해두면 HashSet뿐만아니라 어떤 Set구현체로도 활용할 수 있다.
+
+Decorator Pattern 공부하기!
 
 ---
 ## item19 상속을 고려해 설계하고 문서화하라. 그러지 않았다면 상속을 금지하라
