@@ -580,6 +580,32 @@ Decorator Pattern 공부하기!
 
 ---
 ## item20 추상 클래스보다는 인터페이스를 우선하라
+추상클래스가 정의한 타입을 구현하려면 반드시 추상클래스의 하위 클래스여야 된다. 자바는 다중상속이 허용되지 않은 언어이다. 인터페이스는 다중구현 및 다중상속이 가능하기 때문에 추상클래스보다 인터페이스가 더 우선시 되어야 한다.
+
+예를들어 가수 인터페이스와 작곡가 인터페이스가 있다고 가정해보자
+
+```java
+public interface Singer{
+    AudioClip sing(Song s);
+}
+
+public interface SongWriter {
+    Song compose(int chartPosition);
+}
+```
+
+현실세계에선 작곡도 하는 가수, 즉 싱어송라이터가 있다. 위에서 인터페이스로 정의했기 때문에 두 인터페이스 모두 상속받고 새로운 메소드를 정의할 수 있다.
+
+```java
+public interface SingerSongWriter extends Singer, SongWriter {
+    AudioClip strum();
+    void actSensitive();
+}
+```
+
+만약 Singer와 SongWriter가 인터페이스가 아니라 클래스로 정의되었다면 꽤 복잡하게 접근해야 할 것이다.
+
+책에서 나온 디자인패턴) template method pattern, adapter pattern
 
 ---
 ## item21 인터페이스는 구현하는 쪽을 생각해 설계하라
