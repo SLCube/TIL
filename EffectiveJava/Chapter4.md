@@ -609,13 +609,137 @@ public interface SingerSongWriter extends Singer, SongWriter {
 
 ---
 ## item21 인터페이스는 구현하는 쪽을 생각해 설계하라
+Java 8 이전에는 기존 구현체를 깨뜨리지 않고서는 인터페이서에 새로운 메소드를 추가 할 수 없었다. 
+Java 8 부터는 default method를 이용해 기존 인터페이스에 새로운 메소드를 추가 할 수 있게됐지만 문제가 완벽히 해결된 것은 아니다. 왜냐면 default method를 추가한다는건 인터페이스를 구현한 모든 구현클래스를 모른채 합의없는 메소드 삽입이 될 수 있기 때문이다.
+
+새로운 인터페이스를 정의할때 default method는 표준적인 메소드 구현을 제공해주는 역할을 할 수 있지만 기존 인터페이스에 default 메소드를 추가하는 일은 정말 꼭 필요한 경우가 아니라면 하지말자. 사용하는곳에서 무슨 재앙을 맞이할지 모른다.
 
 ---
 ## item22 인터페이스는 타입을 정의하는 용도로만 사용하라
+인터페이스는 외부에 공개할 API를 정의해 사용하기도 하고, 구현체의 인스턴스를 참조할 수 있는 타입 역할을 한다. 즉, 공개한 API는 사용하고 내부 구조까지 파악할 수 없게끔 해준다. 인터페이스는 이러한 역할로만 사용해야 한다.
 
+인터페이스에는 메소드뿐만아니라 상수도 작성할 수 있다는 것 때문에 메소드없이 상수만 작성하는 상수 인터페이스를 만들 수 있다.(상수 인터페이스는 안티패턴이다.)
+
+```java
+// 다시 적지만 상수 인터페이스는 안티패턴이다.
+public interface PhysicalConstants {
+    static final double AVOHADROS_NUMBER = 6.022_140_857e23;
+    static final double BOLTMANN_CONSTANT = 1.380_648_52e-23;
+    static final double ELECTRON_MASS = 9.109_383_56e-31;
+}
+```
+상수 인터페이스가 안티패턴인 이유
+- 클래스 내부에서 사용하는 상수는 외부 인터페이스가 아닌 내부 구현이다. 즉 인터페이스에서 내부 구현을 노출한 셈이 된다.
+- 클라이언트코드에서 내부 구현에 해당되는 상수들에 종속되게 할 수 있다.
+
+상수를 제공할 목적이면 상수 인터페이스보단 유틸리티 클래스를 만들어 제공하는편이 훨 낫다.
+```java
+public class PhysicalConstants {
+    // 인스턴스화를 막기위해 private 생성자를 선언
+    private PhysicalConstants() {}
+
+    public static final double AVOHADROS_NUMBER = 6.022_140_857e23;
+    public static final double BOLTMANN_CONSTANT = 1.380_648_52e-23;
+    public static final double ELECTRON_MASS = 9.109_383_56e-31;
+    // java 7 버전부터 숫자사이에 밑줄을 허용해줘서 가독성을 높여준다.
+}
+```
 ---
 ## item23 태그 달린 클래스보다는 클래스 계층구조를 활용하라
+```java
+public class Figure {
+    enum Shape { RECTANGLE, CIRCLE };
 
+    final Shape shape;
+
+    // 사각형일때만 쓰는 필드
+    double length;
+    double width;
+
+    // 원일때만 쓰는 필드
+    double radius;
+
+    // 원용 생성자
+    public Figure(double radius) {
+        shape = Shape.CIRCLE;
+        this.radius = radius;
+    }
+
+    // 사각형용 생성자
+    public Figure(double length, double width) {
+        shape = Shape.RECTANGLE;
+        this.length = length;
+        this.width = width;
+    }
+
+    double area() {
+        switch(shape) {
+            case RECTANGLE:
+                return length * width;
+            case CIRCLE:
+                return Math.PI * (radius * radius);
+            default:
+                throw new AssertionsError(shape);
+        }
+    }
+}
+```
+
+현재 도형이 무슨 도형인지 나타내는 태그 필드(shape)가 달린 클래스이다. 개인적인 생각이지만 책의 다른 내용을 안보고 이 클래스만 봤을때 들은 생각은 못생겼다. 아마 주석이 없었다면 간단한 클래스치고 읽는데 꽤 오래걸렸을 것이다. 여러개의 상태와 그 상태별로 달라지는 행동들이 한 곳에 혼합 되있어 가독성이 굉장히 떨어진다. 
+
+추가로 사각형과 원이 아닌 다른 모양이 추가 된다면? 그 모양을 나타내는 enum을 추가해주고, 그 모양이 사용하는 필드를 추가해주고, area method안에 switch문을 수정해주고... 사람인지라 실수 할 수도 있고 실수를 하지 않더라도 이 클래스의 가독성은 더 떨어질것이다.
+
+이런 태그 달린 클래스를 계층구조를 갖는 클래스들로 리팩토링 하자.
+
+- 가장 먼저 root를 나타낼 추상클래스를 정의하고, 태그값별로 행동이 달라지는 메소드를 추상클래스로 정의한다.
+- 태그값과 상관없이 행동이 일정한 메소드들은 일반메소드로 추가한다.
+- 공통으로 사용하는 데이터 필드들은 root class에 정의한다.
+
+리팩토링한 결과는 이렇게 될것이다.
+
+```java
+public abstract class Figure {
+    public abstract double area();
+}
+
+public class Circle extends Figure {
+    final double radius;
+
+    public Circle(double radius) {
+        this.radius = radius;
+    }
+
+    @Override
+    public double area() {
+        return Math.PI * (radius * radius);
+    }
+}
+
+public class Rectangle extends Figure {
+    final double length;
+    final double width;
+
+    public Rectangle(double length, double width) {
+        this.length = length;
+        this.width = width;
+    }
+
+    @Override
+    public double area() {
+        return length * width;
+    }
+}
+```
+
+계층구조로 구현하니 클래스 이름 자체가 의미를 갖고 있으니 태그가 필요없어지고 클래스안에는 각 의미에 맞는 필드들만 존재하게 된다. 메소드도 더이상 태그별로 구분하기 위한 switch문이 필요없어졌다. 그리고 새로운 도형을 추가하기 위해서 기존 코드에 가독성을 해치는 행위를 하지 않아도 된다.
+
+```java
+public class Square extends Rectangle {
+    public Square(double side) {
+        super(side, side);
+    }
+}
+```
 ---
 ## item24 멤버 클래스는 되도록 static으로 만들라
 
