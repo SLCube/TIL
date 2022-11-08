@@ -742,6 +742,67 @@ public class Square extends Rectangle {
 ```
 ---
 ## item24 멤버 클래스는 되도록 static으로 만들라
+중첩 클래스는 자신을 감싼 바깥 클래스에서만 쓰여야하며, 그외의 쓰임새가 있다면 톱레벨 클래스로 만들자.
 
+중첩 클래스의 종류는 static 멤버 클래스, 멤버 클래스, 익명 클래스, 지역 클래스 이렇게 있고 이 중 static 멤버 클래스를 제외한 나머지는 inner class이다.
+
+    
+static 멤버 클래스는 다른 클래스 안에 선언되고 바깥 클래스의 private 멤버에 접근할 수 있다는 점 빼면 일반클래스와 똑같다.
+static 멤버 클래스는 바깥 클래스의 인스턴스와 암묵적으로 연결되있지 않다. 그래서 클래스 내부에서 바깥 클래스의 멤버 필드에 접근할 수 없다.
+```java
+public class Example {
+    private int num = 0;
+    static class StaticExample {
+        public int getNum() {
+            return num; // compile error!!!
+        }
+    }
+}
+```
+하지만 비정적 멤버 클래스의 인스턴스는 바깥 클래스 인스턴스와 암묵적으로 연결된다. 그래서 비정적 멤버 클래스의 인스턴스 메소드에서 정규화된 this(클래스명.this)를 이용해 바깥 클래스의 메소드나 바깥 인스턴스의 참조를 가져올 수 있다.
+```java
+public class Example {
+    private int num = 0;
+    InnerExample innerExample;
+    public Example() {
+        this.innerExample = new InnerExample();
+    }
+    class InnerExample {
+        private int num = 1;
+        public void printNum() {
+            System.out.println("this.num = " + this.num);
+            System.out.println("Example.this = " + Example.this.num);
+        }
+    }
+}
+```
+비정적 클래스는 어댑터를 정의할때 많이 사용된다.
+멤버 클래스에서 바깥클래스의 인스턴스에 접근할 일이 없으면 무조건 static 멤버클래스로 선언하자.
+- 바깥 인스턴스로의 숨은 외부 참조를 갖게 되므로, 이를 저장하기 위해 시간과 공간이 소모된다.
+- 가비지 컬렉션이 바깥 클래스의 인스턴스를 수거하지 못해서 메모리 누수가 발생한다.
+- 참조가 눈에 보이지 않으니 문제의 원인을 찾기 힘들다.
 ---
-## item25 톱레벨 클래스는 한 파일에 하나만 담으란
+## item25 톱레벨 클래스는 한 파일에 하나만 담으라
+이번 아이템은 간단하다 톱레벨 클래스는 한 파일에 하나만 담자. 하나의 파일에 여러 톱레벨 클래스를 작성해도 우리의 착한 자바 컴파일러는 아무말도 안하지만 동료 개발자가 이 사실을 모르고 같은 이름을 갖는 톱레벨 클래스를 중복해서 선언할 수 있다. 
+
+```java
+// Utensil.java에 선언된 두개의 톱레벨 클래스
+class Utensil {
+    static final String NAME = "pan";
+}
+
+class Dessert {
+    static final String NAME = "cake";
+}
+```
+
+```java
+// Dessert.java에 선언된 두개의 톱레벨 클래스
+class Utensil {
+    static final String NAME = "pan";
+}
+
+class Dessert {
+    static final String NAME = "cake";
+}
+```
