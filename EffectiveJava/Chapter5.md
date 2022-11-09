@@ -71,3 +71,54 @@ example2(list); // 컴파일 오류 발생!!
 
 `List<String>`은 List의 하위타입이지만 `List<Object>`의 하위타입은 아니기 때문이다.
 
+제네릭을 사용하고싶지만 실제 타입 매개변수(actual type parameter)가 무엇인지 모른다면 raw type이 아닌 비한정적 와일드카드 타입(unbounded wild card type)을 사용하자.
+
+```java
+List<?> list = ...
+```
+
+raw type과 비한정적 와일드카드 타입의 차이점은 뭘까?
+
+Collection<?>으로 선언한 컬렉션에는 null이외에 어떤 원소도 넣을 수 없다.
+```java
+List<?> list = new ArrayList<>();
+list.add(null); // 가능
+list.add(1);    // 불가능
+```
+
+대신 컬렉션을 parameter로 받는 메소드가 실제 타입 매개변수를 모를때 비한정적 와일드카드 타입을 쓰면 된다.
+
+```java
+public void printList(List<?> list) {
+    for(Object o : list) {
+        System.out.println("o = " + o);
+    }
+}
+```
+
+```java
+List<String> stringList = new ArrayList<>();
+stringList.add("1");
+stringList.add("2");
+stringList.add("3");
+
+List<Integer> integerList = new ArrayList<>();
+integerList.add(1);
+integerList.add(2);
+integerList.add(3);
+
+printList(stringList);
+printList(integerList);
+```
+
+이렇게 raw type을 쓰지말아야할 다양한 이유를 알아봤지만 몇가지 예외가 존재한다.
+
+- class리터럴에는 raw type을 사용해야한다.(배열과 기본타입도 허용한다.) ex) List.class, int.class, String[].class
+
+- instanceof 연산자를 사용할때는 raw type을 이용하자. 런타임에는 제네릭타입정보가 지워지므로 비한정적 와일드카드 타입 이외의 매개변수화 타입에는 적용할 수 없다.
+
+```java
+if(o instanceof List) {
+    List<?> o = (List<?>) o;
+}
+```
