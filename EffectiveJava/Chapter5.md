@@ -157,3 +157,18 @@ objectList.add("hello objectList");
 
 두 경우 모두 Long타입 저장소에 String을 넣지 못하는건 같지만 배열은 런타임때 에러가 발생하고 리스트를 사용하면 컴파일시점에 바로 알 수 있다.
 
+두번째 차이점은 제네릭은 타입정보가 런타임에 소거된다. 타입정보를 컴파일시에만 검사하고 런타임에는 알 수 없다. 이는 제네릭이 탄생하기 이전 레거시 코드와 제네릭을 사용하는 코드를 함께 사용할 수 있게 해주는 매커니즘이다.
+
+이런 차이때문에 배열과 제네릭은 같이 못쓴다.
+
+```java
+List<String>[] stringLists = new List<String>[1];   // 제네릭 타입의 배열이 허용된다 가정하자
+List<Integer> intList = List.of(42);    // 42를 원소로 갖는 정수리스트 선언
+Object[] objects = stringLists; // Object배열을 선언하고 List<String> 배열을 할당. 배열은 공변이라 문제 없음
+objects[0] = intList;   // 정수리스트를 Object배열의 첫번째 원소로 저장.
+String s stringLists[0].get(0); // 꺼내려보니 String이 아니라 정수형이네...?
+```
+
+뒷내용은 아이템29 학습하고 다시 정리
+
+## item29 이왕이면 제네릭타입으로 만들라
