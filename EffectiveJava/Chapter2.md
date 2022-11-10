@@ -178,3 +178,162 @@ public class NutritionFacts {
 NutritionFacts cocaCola = new NutritionFacts.Builder(240, 8).calories(100).sodium(35).cabohydrate(27).build();
 ```
 
+빌더패턴은 계층적으로 설계된 클래스와 함께 쓰기 좋다.
+
+```java
+public abstract class Pizza {
+
+    public enum Topping { HAM, MUSHROOM, ONION, PEPPER, SAUSAGE }
+    final Set<Topping> toppings;
+    abstract static class Builder<T extends Builder<T>> {
+        EnumSet<Topping> toppings = EnumSet.noneOf(Topping.class);
+
+        public T addTopping(Topping topping) {
+            toppings.add(Objects.requireNonNull(topping));
+            return self();
+        }
+
+        abstract Pizza build();
+
+        protected abstract T self();
+    }
+
+    Pizza(Builder<?> builder) {
+        toppings = builder.toppings.clone();
+    }
+}
+```
+
+```java
+public class Calzone extends Pizza {
+
+    private final boolean sauceInside;
+
+    public static class Builder extends Pizza.Builder<Builder> {
+        private boolean sauceInside = false;
+
+        public Builder sauceInside() {
+            sauceInside = true;
+            return this;
+        }
+
+        @Override
+        public Calzone build() {
+            return new Calzone(this);
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+    }
+
+    private Calzone(Builder builder) {
+        super(builder);
+        sauceInside = builder.sauceInside;
+    }
+}
+```
+
+```java
+public class NyPizza extends Pizza {
+
+    public enum Size { SMALL, MEDIUM, LARGE }
+    private final Size size;
+
+    public static class Builder extends Pizza.Builder<Builder> {
+        private final Size size;
+
+        public Builder(Size size) {
+            this.size = Objects.requireNonNull(size);
+        }
+
+        @Override
+        public NyPizza build() {
+            return new NyPizza(this);
+        }
+
+        @Override
+        protected Builder self() {
+            return this;
+        }
+    }
+
+    private NyPizza(Builder builder) {
+        super(builder);
+        size = builder.size;
+    }
+}
+```
+
+빌더패턴의 단점은 객체를 생성할 때 빌더부터 생성한다. 성능에 민감한 상황에서는 문제가 될 수 있다. 
+
+추가로 빌더패턴을 직접 작성하기엔 코드가 길어지는 문제가 있다. Java진영에서 많이 쓰이는 Lombok 라이브러리의 @Buildeer 어노테이션을 이용하면 문제를 해결할 수 있을거같다.
+
+## item3 private 생성자나 열거타입으로 싱글턴임을 보장하라.
+
+싱글턴을 만드는 두가지 방식
+
+일단 두 방식 모두 생성자는 private으로 막아둔다.
+
+첫번째는 싱글톤 인스턴스에 접근할 수 있는 public static final멤버를 만든다.
+```java
+public class Example {
+    public static final Example INSTANCE = new Example();
+
+    private Example() {}
+
+    ... 이하 생략
+}
+```
+
+두번째는 static factory method에서 미리 선언한 인스턴스를 반환한다.
+```java
+public class Example {
+    private static final Example INSTANCE = new Example();
+
+    private Example() {}
+
+    public Example getInstance() {
+        return INSTANCE;
+    }
+}
+```
+
+두번째 방식은 첫번째 방식과 비교했을때 어떤 장점이 있을까?
+
+1. 마음이 바뀌면 싱글턴이 아니게 바꿀수있다. 
+1. static factory method를 제네릭 싱글톤 팩토리 메소드로 바꿀수있다.(item30 학습 후 정리)
+1. static factory method의 메소드 참조를 공금자로 사용할 수 있다.(item43, 44)
+
+이런 장점이 필요 없다면 첫번째 방식을 선택하자.
+
+세번째는 원소가 하나인 열거타입을 선언하는 것이다.
+```java
+public enum Example {
+    INSTANCE;
+    
+    ...
+}
+```
+public 방식과 비슷하지만 더 간결하고, 추가 노력없이 직렬화할 수 있고, 리플렉션 공격에도 안전한다.
+
+Enum외의 클래스를 상속해야한다면 세번째 방법은 사용할 수 없다.
+
+## item4 인스턴스화를 막으려면 private 생성자를 사용하라
+
+static 멤버만 담은 유틸 클래스는 인스턴스를 만들어 사용하라고 설계한것이 아니다. 하지만 생성자를 명시하지 않으면 자동으로 기본 public생성자를 만들어지고 사용하는 입장에서 개발자가 선언한건지 자동으로 생성된건지 판단할 수 없다.
+
+추상클래스로 만드는것으로는 인스턴스화를 막을 수 없다. 하위클래스를 만들면 되는것이다. 오히려 추상클래스로 선언하는 행위자체가 상속해서 사용하라는 의미로 오해할 수 있다.
+
+private 생성자를 선언하면 인스턴스화 자체를 막을 수 있다.
+
+## item5 자원을 직접 명시하지 말고 의존 객체 주입을 사용하자
+
+## item6 불필요한 객체 생성을 피하라
+
+## item7 다 쓴 객체 참조를 해제하라
+
+## item8 finalizer와 cleaneer 사용을 피하라
+
+## item9 try-finally 보다는 try-with-resources를 사용하라
