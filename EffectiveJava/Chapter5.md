@@ -122,3 +122,38 @@ if(o instanceof List) {
     List<?> o = (List<?>) o;
 }
 ```
+
+## item27 비검사 경고를 제거하라
+제네릭을 사용하기 시작하면 수많은 컴파일러 경고를 보게될 것이다. 비검사형변환 경고, 비검사 메소드 호출 경고, 비검사 매개변수화 가변인수 타임 경고, 비ㅓㅁ사 변환 경고 등등.. 
+
+아래는 간단한 예시이다.
+
+```java
+Set<String> stringSet = new HashSet();
+```
+
+이렇게 코드를 작성하면 컴파일러가 친절히 경고를 내줄것이다. Java7부터는 <>표시만으로도 해결할 수 있다. 실제 타입을 명시하지 않아도 컴파일러가 추론해준다.
+
+```java
+Set<String> stringset = new HashSet<>();
+```
+
+할 수 있는한 모든 비검사경고를 제거하자. 그러면 타입 안정성이 보장된다. 즉, ClassCastException이 발생할일이 없다. 경고를 제거할 수 없지만 타입 안전하다고 확신이 들면 @SuppressWarnings("unchecked")를 이용해 경고를 숨기자(확신이라는 단어로부터 거부감이 들긴하지만....)
+
+@SuppressWarnings 어노테이션은 지역변수 선언부터 클래스 선언까지 달 수 있지만 가능한 좁은 범위에 적용하자. 그리고 위 어노테이션은 적용할 때에는 왜 적용했는지 주석으로 달아주자.
+
+## item28 배열보다는 리스트를 사용하라.
+배열과 제네릭타입의 차이점
+
+첫째. 배열은 공변(covariant)이고 제네릭은 불공변이다(invariant). Sub클래스가 Super클래스의 하위 클래스라면 배열은 Sub[]이 Super[]의 하위 클래스가 되고, 제네릭타입은 `List<Sub>`이 `List<Super>`의 하위클래스가 아니다.
+
+```java
+Object[] objectArray = new Long[1];
+objectArray[0] = "hello objectArray";
+
+List<Object> objectList = new ArrayList<Long>();
+objectList.add("hello objectList");
+```
+
+두 경우 모두 Long타입 저장소에 String을 넣지 못하는건 같지만 배열은 런타임때 에러가 발생하고 리스트를 사용하면 컴파일시점에 바로 알 수 있다.
+
