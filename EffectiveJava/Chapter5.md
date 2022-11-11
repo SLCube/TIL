@@ -172,3 +172,138 @@ String s stringLists[0].get(0); // 꺼내려보니 String이 아니라 정수형
 뒷내용은 아이템29 학습하고 다시 정리
 
 ## item29 이왕이면 제네릭타입으로 만들라
+Object클래스 기반으로 만들어진 Stack 클래스
+```java
+public class Stack {
+    private Object[] elements;
+    private int size = 0;
+    private static final int DEFAULT_INITIAL_CAPACITY = 16;
+    
+    public Stack() {
+        elements = new Object[DEFAULT_INITIAL_CAPACITY];
+    }
+
+    public void push(Object e){
+        ensureCapacity();
+        elements[size++] = e;
+    }
+
+    public Object pop() {
+        if(size == 0) {
+            throw new EmptyStackException();
+        }
+
+        Object result = elements[--size];
+        elements[size] = null;
+        return result;
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    private void ensureCapacity() {
+        if(elements.length == size) {
+            elements = Arrays.copyOf(elements, 2 * size + 1);
+        }
+    }
+}
+```
+
+지금 상태에서는 클라이언트가 스택에서 객체를 꺼낼때마다 형변환을 해줘야되는데 이는 타입 안전하지 않은 상황이다.
+
+이제 제네릭 스택으로 바꿔보자
+
+```java
+public class Stack<E> {
+    private E[] elements;
+    private int size = 0;
+    private static final DEFAULT_INITIAL_CAPACITY = 16;
+
+    public Stack {
+        // E와 같이 실체화 불가 타입으론 배열을 만들 수 없음.
+        elements = E[DEFAULT_INITIAL_CAPACITY];
+    }
+    
+    public void push(E e) {
+        ensureCapacity();
+        elements[size++] = e;
+    }
+
+    public E pop() {
+        if(size == 0) {
+            throw new EmptyStackException();
+        }
+
+        E result = elements[--size];
+        elements[size] = null;
+        return result;
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
+
+    private void ensureCapacity() {
+        if(elements.length == size) {
+            elements = Arrays.copyOf(elements, 2 * size + 1);
+        }
+    }    
+}
+```
+
+E와 같이 실체화 불가 타입으로는 배열을 만들 수 없다. 이런 오류를 해결하기 위한 두가지 해결책이 있다.
+
+첫째는 Object배열을 생성한 뒤 제네릭 배열로 형변환 하는것이다.
+
+```java
+public class Stack<E> {
+    private E[] elements;
+    private int size = 0;
+    private static final DEFAULT_INITIAL_CAPACITY = 16;
+
+    @SuppressWarnings("unchecked")
+    public Stack() {
+        elements = (E[]) new Object[DEFAULT_INITIAL_CAPACITY];
+    }
+}
+```
+
+@SuppressWarnings를 선언하지 않으면 unchecked cast 경고가 뜰것이다. 컴파일러는 타입 안전하지 않다라는걸 증명할 수 없지만 우리는 증명할 수 있다. 
+
+elements는 private으로 선언되있어 클라이언트에서 직접적으로 접근할 수 없음. push메소드를 통해 stack에 저장되는 원소는 항상 E타입이다. 그래서 이 비검사 형변환은 항상 안전하다. @SuppressWarnings("unchecked") 어노테이션을 사용할때는 최소 범위에 적용하자.
+
+두번째 방법은 elements필드의 타입을 E[]에서 Object[]로 바꾸는것이다.
+
+```java
+public class Stack<E> {
+    private Object[] elements;
+    private int size = 0;
+    private static final DEFAULT_INITIAL_CAPACITY = 16;
+
+    public Stack() {
+        elements = new Object[DEFAULT_INITIAL_CAPACITY];
+    }
+
+    ...push 생략
+
+    public E pop() {
+        if(size == 0){
+            throw new EmptyStackException();
+        }
+
+        E result = (E) elements[--size];    // 여기서 형변환을 하지 않으면 오류가 나타난다.
+        elements[size] = null;
+        return result;
+    }
+
+    ... 이하 생략
+}
+```
+
+두 방법다 괜찮다. 첫번째 방법은 가독성이 좋다. 배열타입을 E[]로 선언해서 확실히 E타입 원소만 받겠다고 말한다. 배열에서 원소를 읽을때 형변환을 해줄 필요가 없다.
+
+두번째 방법은 힙 오염을 막을 수 있다.(이 예제에는 해당되지 않는 내용이다 item32를 학습하며 해당내용을 확인해보자)
+
+이번에 보인 예시에서 item28에서의 "배열보단 리스트를 우선시해라"랑 반대되는 모습을 보인다. 자바에서 리스트를 기본타입으로 지원하지 않아 ArrayList같은 제네릭타입도 결국엔 배열을 이용해 구현하게 된다. HashMap과 같은 제네릭 타입은 성능을 높일 목적으로 배열을 사용하기도 한다.
+
