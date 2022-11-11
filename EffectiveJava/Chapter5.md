@@ -169,7 +169,7 @@ objects[0] = intList;   // 정수리스트를 Object배열의 첫번째 원소�
 String s stringLists[0].get(0); // 꺼내려보니 String이 아니라 정수형이네...?
 ```
 
-뒷내용은 아이템29 학습하고 다시 정리
+
 
 ## item29 이왕이면 제네릭타입으로 만들라
 Object클래스 기반으로 만들어진 Stack 클래스
@@ -306,4 +306,35 @@ public class Stack<E> {
 두번째 방법은 힙 오염을 막을 수 있다.(이 예제에는 해당되지 않는 내용이다 item32를 학습하며 해당내용을 확인해보자)
 
 이번에 보인 예시에서 item28에서의 "배열보단 리스트를 우선시해라"랑 반대되는 모습을 보인다. 자바에서 리스트를 기본타입으로 지원하지 않아 ArrayList같은 제네릭타입도 결국엔 배열을 이용해 구현하게 된다. HashMap과 같은 제네릭 타입은 성능을 높일 목적으로 배열을 사용하기도 한다.
+
+그렇다면 배열이 아닌 리스트로 스택을 구현하면 어떻게 될까?
+
+```java
+public class Stack<E> {
+
+    private List<E> elements;
+
+    public Stack() {
+        elements = new ArrayList<>();
+    }
+
+    public void push(E e) {
+        elements.add(e);
+    }
+
+    public E pop() {
+        if (elements.size() == 0) {
+            throw new EmptyStackException();
+        }
+
+        E result = elements.get(elements.size() - 1);
+        elements.remove(elements.size() - 1);
+        return result;
+    }
+
+    public boolean isEmpty() {
+        return elements.size() == 0;
+    }
+}
+```
 
