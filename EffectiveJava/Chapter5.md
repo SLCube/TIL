@@ -124,7 +124,7 @@ if(o instanceof List) {
 ```
 
 ## item27 비검사 경고를 제거하라
-제네릭을 사용하기 시작하면 수많은 컴파일러 경고를 보게될 것이다. 비검사형변환 경고, 비검사 메소드 호출 경고, 비검사 매개변수화 가변인수 타임 경고, 비ㅓㅁ사 변환 경고 등등.. 
+제네릭을 사용하기 시작하면 수많은 컴파일러 경고를 보게될 것이다. 비검사형변환 경고, 비검사 메소드 호출 경고, 비검사 매개변수화 가변인수 타임 경고, 비검사 변환 경고 등등.. 
 
 아래는 간단한 예시이다.
 
@@ -337,4 +337,32 @@ public class Stack<E> {
     }
 }
 ```
+
+# item30 이왕이면 제네릭 메소드로 만들라
+
+raw type을 사용하는 잘못된 메소드
+```java
+public static Set union(Set s1, Set s2) {
+    Set result = new HashSet(s1);
+    result.add(s2);
+    return result;
+}
+```
+
+지금까지 그러하듯 컴파일은 되지만 타입 안전하지 않다는 경고가 발생한다.
+
+이 경고를 없애기 위해 위 메소드를 제네릭 메소드로 바꾸겠다.
+
+```java
+public static <E> Set<E> union(Set<E> s1, Set<E> s2) {
+    Set<E> result = new HashSet<>(s1);
+    result.addAll(s2);
+    return result;
+}
+```
+
+제네릭 메소드로 바꾸면 타입 안전하고 쓰기 쉽다. 직접 형변환을 하지 않으니 어떤 오류나 경고없이 컴파일이 된다.
+
+
+# item31 한정적 와일드카드를 사용해 API 유연성을 높이라
 
