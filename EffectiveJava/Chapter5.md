@@ -338,7 +338,7 @@ public class Stack<E> {
 }
 ```
 
-# item30 이왕이면 제네릭 메소드로 만들라
+## item30 이왕이면 제네릭 메소드로 만들라
 
 raw type을 사용하는 잘못된 메소드
 ```java
@@ -363,6 +363,116 @@ public static <E> Set<E> union(Set<E> s1, Set<E> s2) {
 
 제네릭 메소드로 바꾸면 타입 안전하고 쓰기 쉽다. 직접 형변환을 하지 않으니 어떤 오류나 경고없이 컴파일이 된다.
 
+## item31 한정적 와일드카드를 사용해 API 유연성을 높이라
+매개변수화 타입은 불공변이다. Type1의 하위타입 Type2가 있을때 `List<Type2>`은 `List<Type1>`의 하위타입이 아니라는거다.
 
-# item31 한정적 와일드카드를 사용해 API 유연성을 높이라
+조금 더 쉽게 말하면 `List<String>`은 `List<Object>`의 하위타입이 아니란소리인데 잘 생각해보면 불공변인게 맞다 왜냐면 `List<Object>`는 어떤 객체도 넣을 수 있는데 `List<String>`은 문자열만 넣을수 있기 때문이다. `List<String>`은 `List<Object>`가 하는일을 못하기때문에 하위타입이 아니다.
 
+예를들어 Stack API를 확장해 pushAll과 popAll을 추가한다 생각해보자.
+
+먼저 pushAll을 구현해보면
+
+```java
+public void pushAll(Iterable<E> src) {
+    for(E e : src) {
+        push(e);
+    }
+}
+```
+
+이제 동작시켜보자
+```java
+Stack<Number> numberStack = new Stack<>();
+Iterable<Integer> integers = List.of(1, 2, 3);
+numberStack.pushAll(integers);  // incompatible types error
+```
+
+우리는 Number타입의 하위타입인 Integer타입을 담은 Iterable을 pushAll메소드에 넣었다. 논리적으로 잘 동작해야 될 것 같지만 매개변수화 타입은 불공변이기 때문에 즉 `Iterable<Number>`은 `Iterable<Integer>`의 상위타입이 아니기 때문에 동작하지 않는다.
+
+자바에선 이러한 상황을 대비해 한정적 와일드카드 타입이라는 특별한 매개변수화 타입을 지원한다. 
+
+```java
+public void pushAll(Iterable<? extends E> src) {
+    for(E e : src) {
+        push(e);
+    }
+}
+```
+
+마찬가지로 popAll을 구현해보자
+```java
+public void popAll(Collection<E> dst) {
+    while(!isEmpty()) {
+        dst.add(pop());
+    }
+}
+```
+
+이제 스택에 있는 원소들을 컬렉션으로 옮겨보자
+```java
+Collection<Object> list = new ArrayList<>();
+numberStack.popAll(list);   // incompatible types error!!
+```
+
+마찬가지로 `Collection<Object>`는 `Collection<Number>`의 상위타입이 아니기때문에 incompatible types error가 발생한다. 이번에도 한정적 와일드카드를 통해 해결해보자
+
+```java
+public void popAll(Collection<? super E> dst) {
+    while(!isEmpty()) {
+        dst.add(pop());
+    }
+}
+```
+
+유연성을 극대화하려면 원소의 생산자나 소비자용 입력 매개변수에 한정적 와일드카드 타입을 사용하자. 그러나 타입을 정확히 지정해야되는 상황엔 한정적 와일드카드 타입을 쓰는것이 좋을게 하나도 없다.
+
+다음 공식을 기억해두자
+
+펙스(PECS) : producer-extends, consumer-super
+
+매개변수화 타입 T가 생산자라면 `<? extends T>`를 사용하고, 소비자라면 `<? super T>`를 사용하자.
+
+여기서 소비자, 생산자란?
+- 생산자 : 위 Stack의 예시에서 pushAll의 매개변수 src는 Stack이 사용할 E인스턴스를 '생산'하므로 `<? extends T>`를 사용했다.
+- 소비자 : popAll의 매개변수 dst는 Stack에서 만들어진 E 인스턴스를 소비하므로 `<? super T>`를 사용했다.
+
+item30에 union메소드에도 적용해보자
+
+```java
+public static <E> Set<E> union(Set<E> s1, Set<E> s2) {
+    Set<E> result = HashSet<>(s1);
+    result.addAll(s2);
+    return result;
+}
+```
+
+해당 메소드를 이렇게 사용하면 에러가 발생할 것이다.
+```java
+Set<Integer> integerSet = Set.of(1, 2, 3);
+Set<Double> doubleSet = Set.of(1.1, 2.2, 3.3);
+Set<Number> numberSet = union(integerSet, doubleSet);   // error!!!
+```
+
+이제 union method에 PECS공식을 적용해서 고쳐보자
+```java
+public static <E> Set<E> union(Set<? extends E> s1, Set<? extends E> s2) {
+    Set<E> result = HashSet<>(s1);
+    result.addAll(s2);
+    return result;
+}
+```
+
+`<? extends E>`를 사용한 이유는 매개변수 s1, s2가 union 메소드가 사용할 E 인스턴스를 생산하므로 producer-extends에 따라 `<? extends E>`를 사용했다.
+
+반환타입에는 한정적 와일드카드 타입을 사용하면 안된다. 만약 반환타입에도 한정적 와일드카드 타입을 사용하게되면 유연성이 올라가기는 커녕 클라이언트에도 와일드카드타입을 사용해야한다.
+
+다음은 반환타입에 한정적 와일드카드 타입을 사용한뒤 Intellij IDE의 도움을 받아 고친 코드이다.
+
+```java
+Set<Integer> integerSet = Set.of(1, 2, 3);
+Set<Double> doubleSet = Set.of(1.1, 2.2, 3.3);
+
+Set<Number> union = (Set<Number>) union(integerSet, doubleSet); // unchecked cast
+```
+
+IDE의 도움을 받은 결과, 클라이언트에서 형변환을 해주었을때 컴파일은 되지만 unchecked cast 경고가 나타난다. 불필요한 위험성만 생길 뿐이므로 반환타입엔 한정적 와일드카드 타입을 사용하지 말자
