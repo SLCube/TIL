@@ -515,4 +515,55 @@ static <T> T[] toArray(T... args) {
 }
 ```
 
+편리한 유틸 메소드처럼 보이지만 위에 언급한 내용을 참고하면 배열의 참조값이 외부로 노출되는 문제가 있다. 이제 이런 메소드가 어떤 문제를 갖고 오는지 알아보자
+
+```java
+static <T> T[] pickTwo(T a, T b, T c) {
+        switch (ThreadLocalRandom.current().nextInt(3)) {
+            case 0:
+                return toArray(a, b);
+            case 1:
+                return toArray(a, c);
+            case 2:
+                return toArray(b, c);
+        }
+        throw new AssertionError(); // 도달 불가능
+    }
+```
+
+pickTwo 메소드를 사용하는 클라이언트는 어떤 경고도 보지 못한다. 그럼에도 pickTwo 메소드를 실행하면 cannot be cast to class 에러가 발생한다. 
+
+디버깅모드로 살펴보자
+
+<img src="./img/item32 가변인수 메소드 호출 디버그 모드.png">
+
+toArray를 직접 호출할땐 타입에 맞는 배열을 선언하지만, 다른 메소드를 통해 호출하면 Object타입 배열을 선언할까?
+
+책에는 pickTwo에 어떤타입의 매개변수가 들어오더라도 다 담을 수 있는 가장 구체적인 타입인 Object배열로 선언된다 라고만 적혀있다. 
+
+개인적으로 곰곰히 생각해봤다. 자바에서 raw type을 허용하는 이유는 하위버전과의 호환때문이라 배웠다. 자바5버전 이전의 세상에선 raw type만을 허용했기 때문에 자바5버전 이후에 런타임환경에선 제네릭을 소거하는 방법을 선택했다고 했다.  (`List<E> -> List`) 그러면 컬렉션이 아닌 타입은 런타임환경에선 어떻게 바뀔까? 타입을 삭제시킬순 없으니 모든 타입을 받을 수 있는 Object타입으로 선언되는게 아닐까? 라는 생각을 해봤다.
+
+정리하자면 가변인수를 담는 배열의 참조가 외부에 노출되지 않고 가변인수를 담는 배열에 데이터를 저장하지 않는, 즉 순수하게 인수들을 전달하는 역할만 수행한다면 제네릭 가변인수를 사용하더라도 타입 안전하다. 타입안전하다 판단되면 @SafeVarargs 어노테이션을 달아주자. 그래야 해당 메소드를 사용하는 클라이언트에서 경고가 나타나지않고 클라이언트에서 헷갈리지 않게된다.
+
+추가로 @SafeVarargs 어노테이션은 재정의할 수 없는 메소드에만 달아야한다. 재정의된 메소드도 안전하다는 보장이 없기 때문이다. static메소드, final인스턴스 메소드, 그리고 자바9버전부턴 private인스턴스 메소드에서도 사용가능하다
+
+### 그래서 힙오염이라는게 뭔데?
+
+힙오염(Heap Pollution)이란 매개변수화 타입의 변수가 다른 타입의 객체를 참조할때 발생한다.
+
+@SafeVarargs 어노테이션 사용이 유일한 정답일까? 그렇지 않다. item28에서 살펴본것처럼 모든 배열은 리스트로 바꿀수 있다.
+
+```java
+static <T> List<T> flatten(List<List<? extends T> lists) {
+    List<T> result = new ArrayList<>();
+    for(List<? extends T> list : lists) {
+        result.addAll(list);
+    }
+
+    return result;
+}
+```
+
+이 방법의 장점은 컴파일러가 해당 코드가 타입 안전한지 검증할 수 있다는 것이다. 개발자가 실수로 잘못 판단했을거다 라는 걱정을 할 필요도 없다. 단점은 클라이언트코드가 살짝 지저분해지고 속도가 조금 느려질 수 있다는 점이다.
+
 ## item32 타입 안전 이종 컨테이너를 고려하라
