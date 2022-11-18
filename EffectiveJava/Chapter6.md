@@ -184,3 +184,56 @@ public enum Ensemble {
 어노테이션은 위의 문제점들을 아주 효과적으로 해결해주므로 어노테이션이 할 수 있는 일을 명명패턴으로 처리할 이유는 없다. 
 
 도구 제작자가 아니라면, 어노테이션을 직접 제작할 일은 없다. 하지만 자바 프로그래머라면 자바에서 제공하는 어노테이션을 예외없이 사용해야한다.
+
+## item40 @Override 어노테이션을 일관되게 사용하라
+
+@Override 어노테이션은 메소드 선언에만 달 수 있다. 이 어노테이션을 다았다는 건 상위 타입의 메소드를 재정의했다는 뜻이다. 이 어노테이션을 제때 사용하지 않을경우 어떤일이 일어나는지 살펴보자
+
+```java
+public class Bigram {
+    private final char first;
+    private final char second;
+
+    public Bigram(char first, char second) {
+        this.first = first;
+        this.second = second;
+    }
+
+    public boolean equals(Bigram b) {
+        return b.first == first && b.second == second;
+    }
+
+    public int hashCode() {
+        return 31 * first + second;
+    }
+
+    public static void main(String[] args) {
+        Set<Bigram> s = new HashSet<>();
+        for (int i = 0; i < 10; i++) {
+            for (char ch = 'a'; ch <= 'z'; ch++) {
+                s.add(new Bigram(ch, ch));
+            }
+            System.out.println("s.size() = " + s.size());
+        }
+    }
+}
+```
+
+해당 코드를 실행해보면 260이 나온다 26이 나올거같은데 왜그럴까?
+
+코드를 잘 찾아보면 별 문제 없어보인다. equals를 재정의했고, equals를 재정의할땐 항상 hashCode를 재정의하라는 사실을 잘 지켰다. 하지만 잘 찾아보면 equals를 재정의한게 아니다. 재정의가 아니라 다중정의이다. 이게 뭔말인고 하니 Object의 equals를 재정의하려면 Object타입의 매개변수를 받아야된다. 하지만 우리는 Bigram타입의 매개변수를 받았다. 이제 코드를 고쳐보자
+
+```java
+@Override
+public boolean equals(Object o) {
+    if(!(o instanceof Bigram)) {
+        return false;
+    }
+
+    Bigram b = (Bigram) o;
+    return b.first == first && b.second == second;
+}
+```
+
+재정의하는 메소드에 의식적으로 @Override 어노테이션을 달아주면 컴파일러가 우리의 실수를 바로 알려줄것이다.
+
