@@ -126,3 +126,46 @@ apply추상 메소드를 선언한 뒤 상수 바로옆에 apply메소드를 재
 
 필요한 원소를 컴파일타임에 다 알 수 있는 상수 집합이라면 항상 열거타입을 사용하자
 
+## item35 ordinal 메소드 대신 인스턴스 필드를 사용하라
+
+ordinal 메소드란? 열거 타입 상수를 하나의 정숫값에 대응시킨뒤 그 정수값을 반환해주는 메소드이다. 
+
+ordinal메소드에 대한 첫 인상은 item34(int 상수 대신 열거 타입을 사용하라)의 조언과 반대되는 행동을 하는 메소드라 생각했다. 기껏 열거타입을 만들었더니 다시 정수타입을 반환하네? 
+
+잘못된 예시를 알아보자
+
+```java
+public enum Ensemble {
+    SOLO, DUET, TRIO, QUARTET, QUINTET, SEXTET, SEPTET, OCTET, NONET, DECTET;
+
+    public int numOfMusicians() {
+        return ordinal() + 1;
+    }
+}
+```
+
+솔로부터 10중주까지 연주자 수를 반환해주는 numOfMusicians 메소드를 정의했다. 
+
+이 방식엔 문제점이 있는데, 첫째로 중복된 상수를 반환할 수 없다. 예를들어 복4중주(double quartet)은 8명이 연주를 하는데 이미 8중주가 8이라는 정수를 할당받았기 때문에 같은 정수를 할당받을 수 없다. 
+
+두번째는 중간을 비워둘 수 없다. 예를들어 12명이 연주하는 3중 4중주(triple Quartet)을 선언하고 싶은데 11명이 연주하는 형식의 상수가 없다. 이런경우엔 11명이 연주하는 상수 자리에 더미상수를 선언해야될것이다. 이름만 들어도 거부감들지 않는가? 더미상수... 
+
+해결책은 열거 타입 상수에 연결된 값은 ordinal메소드로 얻지 말고 인스턴스 필드에 저장하자.
+
+```java
+public enum Ensemble {
+    SOLO(1), DUET(2), TRIO(3), QUARTET(4), QUINTET(5), SEXTET(6), SEPTET(7), OCTET(8)
+    , NONET(9), DECTET(10);
+
+    private final int numOfMusicians;
+    Ensemble(int size) {
+        this.numOfMusicians = size;
+    }
+
+    public int numOfMusicians() {
+        return numOfMusicians;
+    }
+}
+```
+
+이렇게 선언하면 위에서 언급한 문제점들을 깔끔하게 해결할 수 있다.
