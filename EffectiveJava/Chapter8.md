@@ -98,3 +98,88 @@ public Date end() {
 
 방어적복사는 성능의 저하가 따르고, 항상 쓸 수 있는건 아니다. 호출자가 객체 내부를 수정하지 않는다고 확신할 수 있다면 수행하지 않아도 된다. 이런 상황이라면 문서화를 확실히 해야된다.
 
+## item51 메소드 시그니처를 신중히 설계하라
+
+이번 아이템엔 개별아이템으로 두기 애매한 api 설계 요령들을 모아뒀다. 하나하나 살펴보자
+
+1. 메소드 이름은 신중히 짓자.
+2. 편의 메소드를 너무 많이 만들지 말자. 
+- 메소드가 너무 많은 클래스는 익히고 사용하고 문서화하고 테스트, 유지보수하기 어렵다. 아주 자주 쓰일경우에만 별도의 약칭 메소드를 만들자. 애매하면 만들지 말자
+3. 매개변수 목록은 되도록 짧게하자(되도록 4개 이하)
+- 매개변수가 많으면 기억하기도 어렵다. IDE의 도움을 받으면 그나마 덜하지만 같은 타입의 매개변수가 여러번 나온다면 아주 끔찍하다. 순서를 바꾸기라도 하면 동작은 하지만 엉뚱한 결과를 나타낼것이다.
+
+- 다음은 매개변수 수를 줄이는 세가지 방법이다.
+    1. 메소드를 쪼개자
+    1. 도우미 클래스를 만들자(Dto정도가 될거같다)
+    1. 앞의 두가지 방법을 섞은것으로 객체생성 빌더패턴을 메소드에 적용시킨것 이라 생각하면 된다.
+        - 책에는 예제코드가 없어 간단한 코드를 만들어 보려한다.
+        ```java
+        // 이 객체는 불변하지 않다.
+        // setter는 꼭 필요할 경우가 아니라면 열지 않는것이 맞다.
+        // 예제의 간단함을 위해 setter를 예시로 들었다.
+        public class Sample {
+            private int number;
+            private String string;
+
+            public int getNumber() {
+                return number;
+            }
+
+            public String getString() {
+                return string;
+            }
+
+            public Sample setNumber(int number) {
+                this.number = number;
+                return this;
+            }
+
+            public Sample setString(int string) {
+                this.string = string;
+                return this;
+            }
+        }
+        ```
+
+        ```java
+        Sample sample = new Sample();
+        sample.setNumber(1)
+            .setString("string");
+        ```
+
+4. 매개변수의 타입으로 클래스보단 인터페이스가 낫다.
+
+5. boolean보다 원소 2개짜리 enum이 더 낫다.
+
+메소드의 이름상 boolean타입을 받는것 보다 원소 2개짜리 enum타입이 훨씬 더 낫다. 열거 타입을 사용하면 읽고 쓰기가 훨씬 쉬워진다. 추가로 나중에 추가 선택지를 추가하기 쉬워진다.
+
+다음은 섭씨와 화씨온도를 원소로 선언한 열거타입이다.
+```java
+public enum TemperatureScale {
+    FAHRENHEIT, CELSIUS
+}
+```
+
+```java
+public void sample(boolean isCelsius) {
+    if(isCelsius) {
+        // 섭씨가 어쩌구..
+    } else {
+        // 화씨가 어쩌구...
+    }
+}
+```
+
+```java
+public void sample(TemperatureScale temperatureScale) {
+    if(temperatureScale.equals(TemperatureScale.CELSIUS)) {
+        // 섭씨가 어쩌구...
+    } else {
+        // 화씨가 어쩌구...
+    }
+}
+```
+
+enum타입을 사용하면 true, false인 boolean타입보다 읽기 명백하다. 게다가 위 예시기준으로 화씨, 섭씨뿐만아니라 켈빈온도를 추가하고 싶으면 enum타입은 원소를 하나 추가해주기만 하면 된다. 
+
+## item52 다중정의는 신중히 사용하라
