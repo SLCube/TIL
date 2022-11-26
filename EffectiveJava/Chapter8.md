@@ -183,3 +183,80 @@ public void sample(TemperatureScale temperatureScale) {
 enum타입을 사용하면 true, false인 boolean타입보다 읽기 명백하다. 게다가 위 예시기준으로 화씨, 섭씨뿐만아니라 켈빈온도를 추가하고 싶으면 enum타입은 원소를 하나 추가해주기만 하면 된다. 
 
 ## item52 다중정의는 신중히 사용하라
+이 프로그램이 뭘 출력할지 한번 생각해보자
+```java
+public class CollectionClassifier {
+    public static String classify(Set<?> set) {
+        return "Set";
+    }
+
+    public static String classify(List<?> list) {
+        return "List";
+    }
+
+    public static String classify(Collection<?> c) {
+        return "others";
+    }
+
+    public static void main(String[] args) {
+        Collection<?>[] collections = {
+                new HashSet<String>(),
+                new ArrayList<BigInteger>(),
+                new HashMap<String, String>().values()
+        };
+
+        for (Collection<?> collection : collections) {
+            System.out.println("classify(collection) = " + classify(collection));
+        }
+    }
+}
+```
+
+Set, List, others가 출력될거같지만 세줄 다 others가 출력된다. 왜그럴까? 일단 다중정의(overloading)은 어느 메소드가 호출될지 컴파일타임에 결정된다. 아무리 런타임 환경에서 collections 원소들의 타입이 HashSet, ArrayList, HashMap일지라 해도 컴파일타임엔 결국 Collection타입이기 때문에 others가 출력되는 것이다.
+
+이번엔 비슷한 프로그램이지만 overloading이 아닌 overriding의 예시를 한번 보자
+
+```java
+class Wine {
+    String name() {
+        return "Wine";
+    }
+}
+
+class SparklingWine extends Wine {
+    @Override
+    String name() {
+        return "SparklingWine";
+    }
+}
+
+class Champagne extends SparklingWine {
+    @Override
+    String name() {
+        return "Champagne";
+    }
+}
+
+public class Overriding {
+
+    public static void main(String[] args) {
+
+        List<Wine> wineList = List.of(
+                new Wine(), new SparklingWine(), new Champagne()
+        );
+
+        for (Wine wine : wineList) {
+            System.out.println("wine.name() = " + wine.name());
+        }
+    }
+}
+```
+
+위 코드는 Wine, SparklingWine, Champagne을 의도한대로 잘 출력한다. overriding은 어떤 메소드를 출력할지 런타임환경에서 결정한다. 컴파일타임에 아무리 Wine타입이라도 런타임환경에는 각각의 타입이 정해지기때문에 각 타입에 맞는 메소드가 호출된다.
+
+이러한 이유로 다중정의한 메소드는 정적으로 재정의한 메소드는 동적으로 동작한다.
+
+사용하기에 헷갈릴만한 코드는 작성하지 않는게 좋다. 특히 공개된 API의 경우엔 더더욱 그렇다. 안전하게 가려면 매개변수 수가 같은 다중정의는 피하자. 가변인수를 사용하는 메소드라면 다중정의를 사용하지 말자. 
+
+다중정의의 문제를 해결하는 가장 간단한 방법은 메소드이름을 달리해주는것이다. 
+
