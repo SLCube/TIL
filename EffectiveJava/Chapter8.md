@@ -260,3 +260,80 @@ public class Overriding {
 
 다중정의의 문제를 해결하는 가장 간단한 방법은 메소드이름을 달리해주는것이다. 
 
+## item53 가변인수는 신중히 사용하라
+
+가변인수 메소드는 명시한 타입의 인수를 0개 이상 받을 수 있는 메소드이다. 메소드를 호출할 때 항상 같은 인수를 호출하는 경우가 아니라면 매우 유용하게 쓸 수 있다. 다음은 입력받은 정수들의 합을 반환해주는 메소드이다.
+
+```java
+static int sum(int... args) {
+    int sum = 0;
+    
+    for(int arg : args) {
+        sum += arg;
+    }
+
+    return sum;
+}
+```
+sum()은 0을 sum(1, 2, 3)은 6을 반환해준다. 
+
+경우에 따라선 인수를 1개이상 받아야될 경우도 있다. 다음은 잘못된 예시이다.
+
+```java
+static int min(int... args) {
+    if(args.length == 0) {
+        throw new IllegalArgumentException("인수가 1개 이상 필요합니다.");
+    }
+
+    int min = args[0];
+    for (i = 1 ; i < args.length; i++) {
+        if(args[i] < min) {
+            miin = args[i];
+        }
+    }
+
+    return min;
+}
+```
+
+위 코드의 가장 큰 문제는 컴파일이 아닌 런타임환경에서 오류가 터진다는 점이다. 덤으로 코드가 더럽다. 다음은 훨씬 나은 방법이다.
+
+```java
+static int min(int firstArg, int... remaningArgs) {
+    int min = firstArg;
+
+    for(int arg : remaningArgs) {
+        if(arg < min) {
+            min = arg;
+        }
+    }
+
+    return min;
+}
+```
+
+첫번째 인수는 평범한 매개변수로 선언하고 두번째 매개변수는 가변인수로 선언하면 문제를 깔끔히 해결된다.
+
+성능에 민감한 상황이라면 가변인수를 더욱 더 신중하게 써야된다. 가변인수 메소드가 호출될 때마다 배열이 할당돼 초기화를 하기 때문인데 이런 상황에선 다중정의를 이용해 해결할 수 있다.
+
+예를들어 해당 메소드 호출의 95%가 3개이하의 인수를 사용한다 치면
+```java
+public void sample() {...}
+public void sample(int a1) {...}
+public void sample(int a1, int a2) {...}
+public void sample(int a1, int a2, int a3) {...}
+public void sample(int a1, int a2, int a3, int... rest) {...}
+```
+
+이렇게하면 호출중 5%만이 배열을 할당하기때문에 속도 저하를 크게 개선할 수 있다.
+
+## item54 null이 아닌, 빈 컬렉션이나 배열을 반환하라.
+
+컬렉션이나 배열이 비어있을때 null을 반환하면 안된다. 일단 사용하는 입장에서 null처리를 하는 코드를 추가로 작성해줘야된다. null을 반환하는 쪽에서도 null에 대해 특별히 다뤄줘야된다. 
+
+혹자는 빈 컬렉션이나 배열을 생성할때 드는 비용때문에 성능저하가 오지 않을까 걱정하기도 한다. 이건 두가지 이유로 틀린 이야기인데, 첫째론 이 할당이 성능저하의 주범이라고 확인되지 않는다면 신경 쓸 수준의 차이가 아니고, 두번째는 빈 컬렉션과 배열은 새로 할당하지 않아도 반환할 수 있기 때문이다. 
+
+일단 컬렉션의 경우 Collections.emptyList(), Collections.emptyMap(), Collections.emptySet()과 같은 불변인 빈 컬렉션을 반환해주는 메소드들이 있다. 불변 객체는 자유롭게 공유해도 안전하다.
+
+길이가 0짜리인 배열도 미리 선언해두고 반환하면 된다. 길이가 0인 배열은 모두 불변이다.
+
