@@ -100,3 +100,66 @@ System.out.println(1 - 0.10 * 9);
 BigDecimal의 단점은 기존 타입보다 사용하기 불편하고, 느리다는 단점이 있다. 느리다는 문제는 상황에 따라 무시할 수 있지만 사용하기 불편하다는건 해결하고 싶을것이다. 
 
 대안으로 int나 long타입을 사용할 수 있다. 이럴경우엔 소수점을 직접 관리해줘야한다.
+
+## item61 박싱된 기본타입보다는 기본타입을 사용하라.
+
+자바의 데이터타입은 크게 기본타입과 참조타입을 가질 수 있다. 그리고 그 기본타입에 대응하는 참조타입이 있으며 이를 박싱된 기본타입이라 부른다.
+
+자바에는 오토박싱, 오토언박싱 덕분에 두 종류의 타입을 큰 구분없이 사용할 수 있지만 차이가 사라지는건 아니다. 
+
+기본타입과 박싱된 타입의 차이점은 크게 3가지가 있다. 
+1. 기본타입은 값만 갖고있지만, 박싱된 타입은 식별성(identity)을 추가로 갖는다. 박싱된 타입은 서로 값이 같아도 다르다고 식별될 수 있다. 
+2. 기본타입은 항상 유효한 값을 갖고있지만, 박싱된 타입은 null을 가질 수 있다.
+3. 기본타입이 시간과 메모리측면에서 더 효율적이다. 
+
+첫번째 차이를 알아보자
+```java
+public class Sample {
+    public static void main(String[] args) {
+        Comparator<Integer> naturalOrder =
+                (i, j) -> (i < j) ? -1 : (i == j ? 0 : 1);
+
+        System.out.println("naturalOrder.compare(new Integer()) = " + naturalOrder.compare(new Integer(42), new Integer(42)));
+    }
+}
+```
+
+0을 출력할 것 같지만 1을 출력한다. 첫번째 검사는 잘 작동하지만, 두번째 검사에서 == 비교를 하게 되는데 식별자가 다르기 때문에 서로 다른 Integer로 판단하고 1을 출력하게 되는것이다. 
+
+두번째 차이점을 알아보자.
+
+```java
+public class Unbelievable {
+    static Integer i;
+
+    public static void main(String[] args) {
+        if (i == 42) {
+            System.out.println("Unbelievable");
+        }
+    }
+}
+```
+
+Unbelievable을 출력하진 않지만 NullPointException을 던진다. 기본타입은 null로 초기화할 수 없지만 박싱된 타입은 null로 초기화가 가능하기 때문이다. i == 42구문에서 박싱된 타입과 기본타입을 비교하게 되는데 이런경우엔 박싱이 자동으로 풀리게 된다. 그 뒤에 null을 참조하기 때문에 NullPointException이 터지게 되는것이다. 
+
+마지막 차이를 알아보자. item6에서 살펴본 코드이기도 하다.
+```java
+public class Sample {
+    public static void main(String[] args) {
+        Long sum = 0L;
+        long start = System.currentTimeMillis();
+        for (long i = 0; i < Integer.MAX_VALUE; i++) {
+            sum += i;
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("sum = " + sum);
+        System.out.println("end - start = " + (end - start) + "ms");
+    }
+}
+```
+
+지역변수 sum을 박싱된 기본타입으로 선언해 느려진 케이스이다. 추가로 수행시간을 체크해봤는데 필자의 노트북(apple m1 air ram16gb)기준 약2.7초가 걸렸다.(5회 테스트해봤다.) sum을 단순히 기본타입인 long타입으로 바꿔주기만해도 수행시간이 0.7초 약 4배가량 빨라지는 모습을 볼 수 있다. 
+
+그렇다면 언제 써야할까?
+1. 컬렉션의 원소 혹은 키값. 매개변수화 타입이나 매개변수화 메소드의 타입 매개변수는 기본타입으로 쓸 수 없기때문에 어쩔수 없다. 
+2. 리플렉션을 통해 메소드를 호출할때도 박싱된 기본타입을 사용해야한다. 
